@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mini Picker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f1ec; --panel:#ffffff; --ink:#1d1b19; --muted:#7a736b; --line:#e3ddd4;
+  --card:#ebe6de; --accent:#e4572e; --accent-ink:#fff; --pick:#2f9e6b;
+  --shadow:0 1px 2px rgba(0,0,0,.06),0 6px 20px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16161a; --panel:#1f1f25; --ink:#ece9e4; --muted:#8f8a84; --line:#2e2e36;
+    --card:#25252c; --accent:#ff6b3d; --accent-ink:#16161a; --pick:#3fc488;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16161a; --panel:#1f1f25; --ink:#ece9e4; --muted:#8f8a84; --line:#2e2e36;
+  --card:#25252c; --accent:#ff6b3d; --accent-ink:#16161a; --pick:#3fc488;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 "Space Grotesk",system-ui,sans-serif;padding-bottom:96px}
+button,input,select{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar{max-width:1500px;margin:0 auto;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+h1{font-size:20px;margin:0 12px 0 0;letter-spacing:-.02em;white-space:nowrap}
+h1 small{color:var(--muted);font-weight:400;font-size:14px;margin-left:6px}
+.search{flex:1 1 260px;position:relative}
+.search input{width:100%;padding:10px 12px 10px 36px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:.5}
+select{padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);max-width:260px}
+.chip{padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+main{max-width:1500px;margin:0 auto;padding:16px}
+.hint{color:var(--muted);font-size:13px;margin:0 0 12px}
+.shared{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:10px 14px;margin-bottom:14px;display:none;gap:10px;align-items:center;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+@media (max-width:520px){.grid{grid-template-columns:repeat(2,1fr);gap:8px}}
+.card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;cursor:pointer;box-shadow:var(--shadow);transition:transform .12s,border-color .12s;user-select:none}
+.card:hover{transform:translateY(-2px)}
+.card.picked{border-color:var(--pick);box-shadow:0 0 0 2px var(--pick)}
+.thumb{aspect-ratio:1;background-color:var(--card);background-repeat:no-repeat;background-position:0 0;touch-action:pan-y}
+.thumb.fail{display:grid;place-items:center;color:var(--muted);font-size:13px}
+.spin{position:absolute;top:8px;left:8px;font-size:11px;padding:2px 7px;border-radius:99px;background:color-mix(in srgb,var(--panel) 80%,transparent);color:var(--muted);opacity:0;transition:opacity .2s}
+.card:hover .spin{opacity:1}
+.tick{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--panel) 85%,transparent);border:1px solid var(--line);font-weight:700}
+.card.picked .tick{background:var(--pick);border-color:var(--pick);color:#fff}
+.meta{padding:8px 10px 10px}
+.name{font-weight:500;font-size:14px;word-break:break-word;line-height:1.25}
+.sub{color:var(--muted);font-size:12px;margin-top:3px;display:flex;justify-content:space-between;gap:6px}
+.sub span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty{text-align:center;color:var(--muted);padding:60px 0}
+#more{height:1px}
+.tray{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -6px 24px rgba(0,0,0,.12);transform:translateY(110%);transition:transform .2s}
+.tray.on{transform:none}
+.tray .in{max-width:1500px;margin:0 auto;padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.count{font-weight:700;font-size:18px}
+.list{flex:1 1 300px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin;padding:2px 0}
+.mini{flex:0 0 auto;width:44px;height:44px;border-radius:8px;background-color:var(--card);background-repeat:no-repeat;border:1px solid var(--line);cursor:pointer}
+.btn{padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);cursor:pointer;white-space:nowrap}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:500}
+.tray input{padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);width:150px}
+.toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
+.toast.on{opacity:1;transform:translateX(-50%)}
+dialog{border:none;border-radius:16px;padding:0;background:var(--panel);color:var(--ink);width:min(560px,94vw);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+.big{aspect-ratio:1;background-color:var(--card);background-repeat:no-repeat;touch-action:none;cursor:ew-resize}
+.dlg{padding:14px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.dlg .name{flex:1 1 200px;font-size:16px}
+code{font-size:12px;color:var(--muted);word-break:break-all}
+@media (max-width:620px){
+  .bar{padding:10px 12px;gap:8px}
+  h1{width:100%;font-size:18px}
+  select{flex:1 1 40%;max-width:none;padding:8px}
+  .chip{padding:8px 10px}
+  .hint{display:none}
+  main{padding:10px}
+  .tray .in{padding:10px 12px;gap:8px}
+  .tray input{flex:1 1 100px;width:auto}
+  .btn{padding:9px 11px}
+  .list{order:5;flex-basis:100%}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1 id="title">Mini Picker<small id="total"></small></h1>
+    <label class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search names or folders… (e.g. elf archer)" autocomplete="off">
+    </label>
+    <select id="folder" aria-label="Folder"><option value="">All folders</option></select>
+    <select id="sort" aria-label="Sort">
+      <option value="name">Name A–Z</option>
+      <option value="folder">Folder</option>
+      <option value="big">Largest first</option>
+      <option value="small">Smallest first</option>
+    </select>
+    <button class="chip" id="onlyPicked" aria-pressed="false">Only my picks</button>
+    <button class="chip" id="theme" title="Toggle theme">◐</button>
+  </div>
+</header>
+
+<main>
+  <div class="shared" id="shared">
+    <span id="sharedText"></span>
+    <button class="btn" id="sharedCopy">Copy filenames</button>
+    <button class="btn" id="sharedAdopt">Use as my picks</button>
+  </div>
+  <p class="hint" id="hint">Tap a mini to add it to your list · hover or drag a picture to spin it · double-click for a closer look</p>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" hidden>Nothing matches that search.</div>
+  <div id="more"></div>
+</main>
+
+<div class="tray" id="tray">
+  <div class="in">
+    <div><div class="count" id="pcount">0</div><div class="hint" style="margin:0">picked</div></div>
+    <div class="list" id="plist"></div>
+    <input id="who" placeholder="Your name" aria-label="Your name">
+    <button class="btn" id="clear">Clear</button>
+    <button class="btn" id="copy">Copy list</button>
+    <button class="btn primary" id="share">Copy share link</button>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <div class="big" id="bigImg"></div>
+  <div class="dlg">
+    <div class="name" id="bigName"></div>
+    <button class="btn" id="bigCopy">Copy name</button>
+    <button class="btn primary" id="bigPick">Pick</button>
+    <button class="btn" id="bigClose">Close</button>
+  </div>
+  <div style="padding:0 16px 14px"><code id="bigPath"></code></div>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+let ITEMS = [], BYID = new Map(), VIEW = [], shown = 0, SIZE = 384;
+let picks = new Set(store.get("picks", []));
+let shared = null;
+const BATCH = 96;
+
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(()=>t.classList.remove("on"), 1600); }
+async function copy(text, msg){
+  try{ await navigator.clipboard.writeText(text); }
+  catch(e){ const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try{ document.execCommand("copy"); }catch(_){} ta.remove(); }
+  toast(msg || "Copied");
+}
+const norm = s => s.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[_\-.]+/g, " ");
+
+// sprite helpers: thumbnail is a horizontal strip of N angles
+function setFrame(el, it, f){
+  const n = it.views || 1;
+  el.style.backgroundPosition = n > 1 ? `${(f / (n - 1)) * 100}% 0` : "0 0";
+}
+function prepThumb(el, it){
+  if (it.ok === false){ el.classList.add("fail"); el.textContent = "no preview"; return; }
+  el.style.backgroundImage = `url("${it.thumb}?v=${encodeURIComponent(it.stamp || "")}")`;
+  el.style.backgroundSize = `${(it.views || 1) * 100}% 100%`;
+  setFrame(el, it, 0);
+}
+function scrubbable(el, it){
+  const n = it.views || 1; if (n < 2) return;
+  const at = x => { const r = el.getBoundingClientRect(); return Math.min(n - 1, Math.max(0, Math.floor((x - r.left) / r.width * n))); };
+  el.addEventListener("pointermove", e => setFrame(el, it, at(e.clientX)));
+  el.addEventListener("pointerleave", () => setFrame(el, it, 0));
+}
+
+function card(it){
+  const c = document.createElement("div");
+  c.className = "card" + (picks.has(it.id) ? " picked" : "");
+  c.dataset.id = it.id;
+  const th = document.createElement("div"); th.className = "thumb";
+  prepThumb(th, it); scrubbable(th, it);
+  const dims = it.dims ? it.dims.map(v => Math.round(v)).join("×") + " mm" : "";
+  c.innerHTML = `<div class="tick">${picks.has(it.id) ? "✓" : "+"}</div>${(it.views||1) > 1 ? '<div class="spin">⟲ spin</div>' : ""}
+    <div class="meta"><div class="name"></div><div class="sub"><span></span><span>${dims}</span></div></div>`;
+  c.prepend(th);
+  c.querySelector(".name").textContent = it.name.replace(/\.stl$/i, "");
+  c.querySelector(".sub span").textContent = it.folder || "—";
+  c.title = it.path;
+  c.addEventListener("click", () => toggle(it.id));
+  c.addEventListener("dblclick", e => { e.preventDefault(); openBig(it); });
+  let press; // long-press on touch = closer look
+  c.addEventListener("touchstart", () => { press = setTimeout(() => { press = "fired"; openBig(it); }, 550); }, {passive:true});
+  c.addEventListener("touchend", e => { if (press === "fired") e.preventDefault(); clearTimeout(press); press = null; });
+  c.addEventListener("touchmove", () => { clearTimeout(press); }, {passive:true});
+  return c;
+}
+
+function toggle(id){
+  picks.has(id) ? picks.delete(id) : picks.add(id);
+  store.set("picks", [...picks]);
+  document.querySelectorAll(`.card[data-id="${id}"]`).forEach(c => {
+    c.classList.toggle("picked", picks.has(id));
+    c.querySelector(".tick").textContent = picks.has(id) ? "✓" : "+";
+  });
+  renderTray();
+  if ($("#dlg").open) $("#bigPick").textContent = picks.has(id) ? "Remove" : "Pick";
+  if ($("#onlyPicked").getAttribute("aria-pressed") === "true" && !picks.has(id)) applyFilters();
+}
+
+function renderTray(){
+  $("#tray").classList.toggle("on", picks.size > 0);
+  $("#pcount").textContent = picks.size;
+  const list = $("#plist"); list.innerHTML = "";
+  [...picks].map(id => BYID.get(id)).filter(Boolean).forEach(it => {
+    const m = document.createElement("div"); m.className = "mini"; m.title = it.name + " (click to remove)";
+    if (it.ok !== false){ m.style.backgroundImage = `url("${it.thumb}")`; m.style.backgroundSize = `${(it.views||1)*100}% 100%`; }
+    m.onclick = () => toggle(it.id);
+    list.appendChild(m);
+  });
+}
+
+function listText(ids, who){
+  const its = ids.map(id => BYID.get(id)).filter(Boolean);
+  const head = `${who ? who + "'s" : "My"} picks (${its.length}):`;
+  return head + "\n" + its.map(it => it.path).join("\n");
+}
+
+function applyFilters(){
+  const words = norm($("#q").value).split(/\s+/).filter(Boolean);
+  const folder = $("#folder").value;
+  const only = $("#onlyPicked").getAttribute("aria-pressed") === "true";
+  const onlySet = shared && $("#onlyPicked").dataset.shared === "1" ? new Set(shared) : picks;
+  VIEW = ITEMS.filter(it =>
+    (!folder || it.folder === folder || it.folder.startsWith(folder + "/")) &&
+    (!only || onlySet.has(it.id)) &&
+    words.every(w => it._s.includes(w)));
+  const s = $("#sort").value;
+  const cmp = {
+    name: (a,b) => a._n.localeCompare(b._n, undefined, {numeric:true}),
+    folder: (a,b) => a.path.localeCompare(b.path, undefined, {numeric:true}),
+    big: (a,b) => b.mb - a.mb, small: (a,b) => a.mb - b.mb
+  }[s];
+  VIEW.sort(cmp);
+  $("#grid").innerHTML = ""; shown = 0; more();
+  $("#empty").hidden = VIEW.length > 0;
+  $("#total").textContent = VIEW.length === ITEMS.length ? `${ITEMS.length} models` : `${VIEW.length} of ${ITEMS.length}`;
+}
+function more(){
+  const frag = document.createDocumentFragment();
+  VIEW.slice(shown, shown + BATCH).forEach(it => frag.appendChild(card(it)));
+  shown = Math.min(VIEW.length, shown + BATCH);
+  $("#grid").appendChild(frag);
+}
+new IntersectionObserver(es => { if (es[0].isIntersecting && shown < VIEW.length) more(); }, {rootMargin: "1200px"}).observe($("#more"));
+
+// closer look dialog with drag-to-spin
+let bigItem = null;
+function openBig(it){
+  bigItem = it;
+  const b = $("#bigImg"); b.className = "big"; b.textContent = ""; b.style.backgroundImage = "";
+  prepThumb(b, it);
+  $("#bigName").textContent = it.name;
+  $("#bigPath").textContent = it.path + (it.dims ? `  ·  ${it.dims.map(v=>Math.round(v)).join(" × ")} mm` : "") + `  ·  ${it.mb} MB`;
+  $("#bigPick").textContent = picks.has(it.id) ? "Remove" : "Pick";
+  $("#dlg").showModal();
+}
+(() => {
+  const b = $("#bigImg"); let down = null, f0 = 0, f = 0;
+  b.addEventListener("pointerdown", e => { down = e.clientX; f0 = f; b.setPointerCapture(e.pointerId); });
+  b.addEventListener("pointermove", e => {
+    if (!bigItem) return; const n = bigItem.views || 1; if (n < 2) return;
+    const r = b.getBoundingClientRect();
+    f = down == null ? Math.min(n - 1, Math.floor((e.clientX - r.left) / r.width * n))
+                     : ((f0 + Math.round((e.clientX - down) / (r.width / n))) % n + n) % n;
+    setFrame(b, bigItem, f);
+  });
+  b.addEventListener("pointerup", () => down = null);
+})();
+$("#bigClose").onclick = () => $("#dlg").close();
+$("#bigPick").onclick = () => bigItem && toggle(bigItem.id);
+$("#bigCopy").onclick = () => bigItem && copy(bigItem.path, "Filename copied");
+$("#dlg").addEventListener("click", e => { if (e.target === $("#dlg")) $("#dlg").close(); });
+
+// controls
+let qt; $("#q").addEventListener("input", () => { clearTimeout(qt); qt = setTimeout(applyFilters, 120); });
+$("#folder").onchange = applyFilters; $("#sort").onchange = applyFilters;
+$("#onlyPicked").onclick = e => { const b = e.currentTarget; b.dataset.shared = ""; b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") !== "true"); applyFilters(); };
+$("#who").value = store.get("who", "");
+$("#who").oninput = e => store.set("who", e.target.value);
+$("#clear").onclick = () => { if (confirm("Clear all your picks?")) { [...picks].forEach(id => toggle(id)); } };
+$("#copy").onclick = () => copy(listText([...picks], $("#who").value.trim()), "List copied — paste it in a message");
+$("#share").onclick = () => {
+  const u = new URL(location.href); u.hash = "";
+  const who = $("#who").value.trim();
+  u.hash = "picks=" + [...picks].join(",") + (who ? "&by=" + encodeURIComponent(who) : "");
+  copy(u.toString(), "Share link copied — send it over");
+};
+$("#theme").onclick = () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next; store.set("theme", next);
+};
+{ const t = store.get("theme", null); if (t) document.documentElement.dataset.theme = t; }
+
+function readShared(){
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (!h.get("picks")) return;
+  shared = h.get("picks").split(",").filter(id => BYID.has(id));
+  const by = h.get("by");
+  $("#shared").style.display = "flex";
+  $("#sharedText").innerHTML = `<b></b> picked <b>${shared.length}</b> mini${shared.length === 1 ? "" : "s"} — showing just those.`;
+  $("#sharedText b").textContent = by || "Someone";
+  $("#sharedCopy").onclick = () => copy(listText(shared, by), "Filenames copied");
+  $("#sharedAdopt").onclick = () => { shared.forEach(id => { if (!picks.has(id)) toggle(id); }); toast("Added to your picks"); };
+  const b = $("#onlyPicked"); b.dataset.shared = "1"; b.setAttribute("aria-pressed", "true");
+}
+
+fetch("manifest.json", {cache: "no-cache"}).then(r => r.json()).then(m => {
+  SIZE = m.size || 384;
+  if (m.title){ document.title = m.title; $("#title").firstChild.textContent = m.title; }
+  ITEMS = m.items;
+  ITEMS.forEach(it => { it._n = it.name.toLowerCase(); it._s = norm(it.path); BYID.set(it.id, it); });
+  picks = new Set([...picks].filter(id => BYID.has(id)));
+  const folders = new Map();
+  ITEMS.forEach(it => { const parts = it.folder ? it.folder.split("/") : []; for (let i = 1; i <= parts.length; i++){ const f = parts.slice(0, i).join("/"); folders.set(f, (folders.get(f) || 0) + 1); } });
+  [...folders.keys()].sort((a,b) => a.localeCompare(b, undefined, {numeric:true})).forEach(f => {
+    const o = document.createElement("option"); const depth = f.split("/").length - 1;
+    o.value = f; o.textContent = "  ".repeat(depth) + f.split("/").pop() + ` (${folders.get(f)})`;
+    $("#folder").appendChild(o);
+  });
+  if (!folders.size) $("#folder").hidden = true;
+  readShared(); applyFilters(); renderTray();
+}).catch(err => {
+  $("#grid").innerHTML = `<div class="empty">Couldn't load manifest.json — open this page through a web server (see README), not by double-clicking the file.<br><small>${err}</small></div>`;
+});
+window.addEventListener("hashchange", () => location.reload());
+</script>
+</body>
+</html>
